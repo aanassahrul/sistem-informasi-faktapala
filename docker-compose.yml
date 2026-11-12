@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: faktapala_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "if [ ! -f artisan ]; then echo 'Laravel belum diinisialisasi. Ikuti README.md'; sleep infinity;
+      else php artisan serve --host=0.0.0.0 --port=8000; fi"
+    networks:
+      - faktapala
+
+  db:
+    image: mysql:8.4
+    container_name: faktapala_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: faktapala
+      MYSQL_ROOT_PASSWORD: root_faktapala_dev
+      MYSQL_USER: faktapala_user
+      MYSQL_PASSWORD: faktapala_dev_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - faktapala_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot_faktapala_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - faktapala
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: faktapala_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root_faktapala_dev
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - faktapala
+
+volumes:
+  faktapala_mysql:
+
+networks:
+  faktapala:
+    driver: bridge
